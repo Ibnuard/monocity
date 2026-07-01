@@ -1,0 +1,1184 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monopolis Value Mapper</title>
+  <style>
+    :root {
+      --ink: #161b16;
+      --muted: #697068;
+      --paper: #f4efe2;
+      --panel: #fffdf5;
+      --line: #d9d4c6;
+      --accent: #126f5a;
+      --accent-2: #d4a51e;
+      --danger: #a63b2a;
+      --soft: #eef3e9;
+      --active: #fff1bd;
+      --shadow: 0 16px 42px rgba(22, 27, 22, 0.12);
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(22,27,22,0.04) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(rgba(22,27,22,0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--paper);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1320px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 22px 0 34px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 46px;
+      height: 46px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: var(--accent-2);
+      box-shadow: 4px 4px 0 var(--ink);
+      font-weight: 900;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: clamp(24px, 4vw, 40px);
+    }
+
+    h2 {
+      font-size: 18px;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(360px, 0.82fr) minmax(520px, 1.18fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 245, 0.94);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel header {
+      padding: 15px 17px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    .panel-body {
+      padding: 17px;
+    }
+
+    .upload-box {
+      display: grid;
+      gap: 11px;
+      border: 2px dashed #9ea895;
+      border-radius: 8px;
+      background: #fffaf0;
+      padding: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 11px;
+      margin-top: 12px;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 11px;
+      margin-top: 12px;
+    }
+
+    .fields.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffef9;
+      color: var(--ink);
+      padding: 10px 11px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(18, 111, 90, 0.14);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 13px;
+    }
+
+    button {
+      border: 1px solid var(--ink);
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--ink);
+      padding: 9px 12px;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fffef9;
+    }
+
+    button.gold {
+      background: var(--accent-2);
+    }
+
+    button.danger {
+      background: var(--danger);
+      color: #fffef9;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+      box-shadow: none;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin-top: 13px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbf8ec;
+      padding: 11px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 22px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 1fr 150px 150px;
+      gap: 10px;
+      padding: 13px;
+      border-bottom: 1px solid var(--line);
+      background: #fbf7ea;
+    }
+
+    .table-wrap {
+      max-height: 620px;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f7f1df;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    tr.selected td {
+      background: var(--active);
+    }
+
+    tr.done td:first-child {
+      border-left: 5px solid var(--accent);
+    }
+
+    .mono {
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: #e9eee6;
+      color: #334037;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .badge.mapped {
+      background: #dcefe6;
+      color: #0d5e4a;
+    }
+
+    .tiny {
+      padding: 5px 7px;
+      box-shadow: 1px 1px 0 var(--ink);
+      font-size: 12px;
+    }
+
+    .empty {
+      padding: 32px 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    textarea {
+      min-height: 210px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 980px) {
+      .grid,
+      .toolbar,
+      .row,
+      .fields,
+      .fields.three,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar">
+      <div class="brand">
+        <div class="mark">VM</div>
+        <div>
+          <h1>Monopolis Value Mapper</h1>
+          <p class="subtitle">Import CSV RFID atau CSV hasil export, pilih banyak kartu, isi value rule, export CSV final.</p>
+        </div>
+      </div>
+      <div class="pill" id="statusPill">Belum ada CSV</div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <header>
+          <h2>Value Form</h2>
+        </header>
+        <div class="panel-body">
+          <div class="upload-box">
+            <div>
+              <label for="csvInput">Pilih CSV RFID mapper / hasil export value</label>
+              <input id="csvInput" type="file" accept=".csv,text/csv">
+            </div>
+            <p class="hint">Bisa load CSV mentah dari RFID mapper atau CSV final dari tombol Download CSV. Kolom value lama akan kebaca lagi dan bisa diedit ulang.</p>
+          </div>
+
+          <div class="summary">
+            <div class="metric"><span>Total</span><strong id="totalCount">0</strong></div>
+            <div class="metric"><span>Selected</span><strong id="selectedCount">0</strong></div>
+            <div class="metric"><span>Mapped</span><strong id="mappedCount">0</strong></div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="mapperMode">Mapping untuk</label>
+              <select id="mapperMode">
+                <option value="PROPERTY">City / Property</option>
+                <option value="COMMUNITY_CHEST">Community Chest</option>
+                <option value="CHANCE">Chance</option>
+                <option value="CUSTOM">Custom / Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="targetPreview">Target</label>
+              <input id="targetPreview" readonly value="Pilih kartu dulu">
+            </div>
+          </div>
+
+          <section id="propertyFields">
+            <div class="row">
+              <div>
+                <label for="propertyKind">Type</label>
+                <select id="propertyKind">
+                  <option value="PROP">PROP</option>
+                  <option value="COMPANY">COMPANY</option>
+                  <option value="STATION">STATION</option>
+                </select>
+              </div>
+              <div>
+                <label for="groupName">Group / warna</label>
+                <input id="groupName" placeholder="A, B, RED, BLUE">
+              </div>
+            </div>
+
+            <div id="propFields" class="fields three">
+              <div><label for="propPrice">PRICE</label><input id="propPrice" type="number" inputmode="numeric"></div>
+              <div><label for="rent">RENT</label><input id="rent" type="number" inputmode="numeric"></div>
+              <div><label for="rentColorset">RENT_COLORSET</label><input id="rentColorset" type="number" inputmode="numeric"></div>
+              <div><label for="rent1">RENT_1</label><input id="rent1" type="number" inputmode="numeric"></div>
+              <div><label for="rent2">RENT_2</label><input id="rent2" type="number" inputmode="numeric"></div>
+              <div><label for="rent3">RENT_3</label><input id="rent3" type="number" inputmode="numeric"></div>
+              <div><label for="rent4">RENT_4</label><input id="rent4" type="number" inputmode="numeric"></div>
+              <div><label for="rentHotel">RENT_HOTEL</label><input id="rentHotel" type="number" inputmode="numeric"></div>
+              <div><label for="houseCost">HOUSE_COST</label><input id="houseCost" type="number" inputmode="numeric"></div>
+              <div><label for="hotelsCost">HOTELS_COST</label><input id="hotelsCost" type="number" inputmode="numeric"></div>
+              <div><label for="mortagePrice">MORTAGE_PRICE</label><input id="mortagePrice" type="number" inputmode="numeric"></div>
+              <div><label for="unmortagePrice">UNMORTAGE_PRICE</label><input id="unmortagePrice" type="number" inputmode="numeric"></div>
+            </div>
+
+            <div id="stationFields" class="fields">
+              <div><label for="stationPrice">PRICE</label><input id="stationPrice" type="number" inputmode="numeric"></div>
+              <div><label for="stationRent1">RENT_1</label><input id="stationRent1" type="number" inputmode="numeric"></div>
+              <div><label for="stationRent2">RENT_2</label><input id="stationRent2" type="number" inputmode="numeric"></div>
+              <div><label for="stationRent3">RENT_3</label><input id="stationRent3" type="number" inputmode="numeric"></div>
+              <div><label for="stationRent4">RENT_4</label><input id="stationRent4" type="number" inputmode="numeric"></div>
+            </div>
+
+            <div id="companyFields" class="fields">
+              <div><label for="companyPrice">PRICE</label><input id="companyPrice" type="number" inputmode="numeric"></div>
+              <div><label for="companyRent1">RENT_1</label><input id="companyRent1" type="number" inputmode="numeric"></div>
+              <div><label for="companyRent2">RENT_2</label><input id="companyRent2" type="number" inputmode="numeric"></div>
+            </div>
+          </section>
+
+          <section id="communityFields" class="row hidden">
+            <div>
+              <label for="communityAction">Type</label>
+              <select id="communityAction">
+                <option value="RECEIVE">RECEIVE</option>
+                <option value="PAY">PAY</option>
+              </select>
+            </div>
+            <div>
+              <label for="communityValue">VALUE</label>
+              <input id="communityValue" type="number" inputmode="numeric">
+            </div>
+          </section>
+
+          <section id="chanceFields" class="row hidden">
+            <div>
+              <label for="chanceAction">Type</label>
+              <select id="chanceAction">
+                <option value="RECEIVE">RECEIVE</option>
+                <option value="PAY">PAY</option>
+                <option value="ACTION_ONLY">ACTION_ONLY</option>
+              </select>
+            </div>
+            <div id="chanceValueWrap">
+              <label for="chanceValue">VALUE</label>
+              <input id="chanceValue" type="number" inputmode="numeric">
+            </div>
+          </section>
+
+          <section id="customFields" class="row hidden">
+            <div>
+              <label for="customKind">Type</label>
+              <input id="customKind" placeholder="TAX, BANK_ACTION, JAIL_ACTION">
+            </div>
+            <div>
+              <label for="customValue">VALUE</label>
+              <input id="customValue" type="number" inputmode="numeric">
+            </div>
+          </section>
+
+          <div class="actions">
+            <button class="primary" id="applyBtn">Apply ke Selected</button>
+            <button id="loadSelectedBtn">Load dari Row</button>
+            <button id="clearSelectedBtn">Clear Value Selected</button>
+          </div>
+          <p class="hint">Tips cepat: filter type, klik <span class="mono">Select Visible</span>, isi value sekali, lalu apply ke banyak row. Untuk row tertentu, klik <span class="mono">Edit</span>.</p>
+
+          <div class="actions">
+            <button class="gold" id="copyCsvBtn">Copy CSV</button>
+            <button class="gold" id="downloadCsvBtn">Download CSV</button>
+            <button id="copyCodeBtn">Copy Kode C++</button>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="exportKind">Preview export</label>
+              <select id="exportKind">
+                <option value="csv">CSV</option>
+                <option value="cpp">C++</option>
+              </select>
+            </div>
+            <div>
+              <label for="fileName">Nama file download</label>
+              <input id="fileName" value="monopolis-card-values.csv">
+            </div>
+          </div>
+          <textarea id="exportText" readonly></textarea>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header>
+          <h2>Daftar Kartu</h2>
+        </header>
+        <div class="toolbar">
+          <input id="searchInput" placeholder="Cari variable / UID">
+          <select id="typeFilter">
+            <option value="">Semua type</option>
+          </select>
+          <select id="mappedFilter">
+            <option value="">Semua status</option>
+            <option value="mapped">Mapped</option>
+            <option value="unmapped">Belum mapped</option>
+          </select>
+        </div>
+        <div class="panel-body">
+          <div class="actions">
+            <button id="selectVisibleBtn">Select Visible</button>
+            <button id="clearSelectionBtn">Clear Selection</button>
+            <button id="selectByTypeBtn">Select Type CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input id="toggleAll" type="checkbox"></th>
+                <th>No</th>
+                <th>Variable</th>
+                <th>CSV Type</th>
+                <th>Value Type</th>
+                <th>UID</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cardBody"></tbody>
+          </table>
+          <div class="empty" id="emptyState">Import CSV dulu untuk mulai value mapping.</div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const VALUE_COLUMNS = [
+      "VALUE_KIND",
+      "PROPERTY_TYPE",
+      "GROUP",
+      "ACTION_TYPE",
+      "VALUE",
+      "PRICE",
+      "RENT",
+      "RENT_COLORSET",
+      "RENT_1",
+      "RENT_2",
+      "RENT_3",
+      "RENT_4",
+      "RENT_HOTEL",
+      "HOUSE_COST",
+      "HOTELS_COST",
+      "MORTAGE_PRICE",
+      "UNMORTAGE_PRICE"
+    ];
+
+    const STORAGE_KEY = "monopolis-value-mapper-v1";
+    let rows = [];
+    let selectedIds = new Set();
+    let visibleIds = [];
+    let importSource = "Belum ada CSV";
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      csvInput: $("csvInput"),
+      statusPill: $("statusPill"),
+      totalCount: $("totalCount"),
+      selectedCount: $("selectedCount"),
+      mappedCount: $("mappedCount"),
+      mapperMode: $("mapperMode"),
+      targetPreview: $("targetPreview"),
+      propertyFields: $("propertyFields"),
+      propertyKind: $("propertyKind"),
+      groupName: $("groupName"),
+      propFields: $("propFields"),
+      stationFields: $("stationFields"),
+      companyFields: $("companyFields"),
+      communityFields: $("communityFields"),
+      communityAction: $("communityAction"),
+      communityValue: $("communityValue"),
+      chanceFields: $("chanceFields"),
+      chanceAction: $("chanceAction"),
+      chanceValueWrap: $("chanceValueWrap"),
+      chanceValue: $("chanceValue"),
+      customFields: $("customFields"),
+      customKind: $("customKind"),
+      customValue: $("customValue"),
+      applyBtn: $("applyBtn"),
+      loadSelectedBtn: $("loadSelectedBtn"),
+      clearSelectedBtn: $("clearSelectedBtn"),
+      exportKind: $("exportKind"),
+      exportText: $("exportText"),
+      fileName: $("fileName"),
+      copyCsvBtn: $("copyCsvBtn"),
+      downloadCsvBtn: $("downloadCsvBtn"),
+      copyCodeBtn: $("copyCodeBtn"),
+      searchInput: $("searchInput"),
+      typeFilter: $("typeFilter"),
+      mappedFilter: $("mappedFilter"),
+      selectVisibleBtn: $("selectVisibleBtn"),
+      clearSelectionBtn: $("clearSelectionBtn"),
+      selectByTypeBtn: $("selectByTypeBtn"),
+      toggleAll: $("toggleAll"),
+      cardBody: $("cardBody"),
+      emptyState: $("emptyState")
+    };
+
+    const fieldIds = {
+      PROP: ["propPrice", "rent", "rentColorset", "rent1", "rent2", "rent3", "rent4", "rentHotel", "houseCost", "hotelsCost", "mortagePrice", "unmortagePrice"],
+      STATION: ["stationPrice", "stationRent1", "stationRent2", "stationRent3", "stationRent4"],
+      COMPANY: ["companyPrice", "companyRent1", "companyRent2"],
+      COMMUNITY_CHEST: ["communityValue"],
+      CHANCE: ["chanceValue"],
+      CUSTOM: ["customKind", "customValue"]
+    };
+
+    const columnByInput = {
+      propPrice: "PRICE",
+      rent: "RENT",
+      rentColorset: "RENT_COLORSET",
+      rent1: "RENT_1",
+      rent2: "RENT_2",
+      rent3: "RENT_3",
+      rent4: "RENT_4",
+      rentHotel: "RENT_HOTEL",
+      houseCost: "HOUSE_COST",
+      hotelsCost: "HOTELS_COST",
+      mortagePrice: "MORTAGE_PRICE",
+      unmortagePrice: "UNMORTAGE_PRICE",
+      stationPrice: "PRICE",
+      stationRent1: "RENT_1",
+      stationRent2: "RENT_2",
+      stationRent3: "RENT_3",
+      stationRent4: "RENT_4",
+      companyPrice: "PRICE",
+      companyRent1: "RENT_1",
+      companyRent2: "RENT_2",
+      communityValue: "VALUE",
+      chanceValue: "VALUE",
+      customKind: "ACTION_TYPE",
+      customValue: "VALUE"
+    };
+
+    function parseCsv(text) {
+      const result = [];
+      let row = [];
+      let cell = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === '"' && inQuotes && next === '"') {
+          cell += '"';
+          i++;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === "," && !inQuotes) {
+          row.push(cell);
+          cell = "";
+        } else if ((char === "\n" || char === "\r") && !inQuotes) {
+          if (char === "\r" && next === "\n") {
+            i++;
+          }
+          row.push(cell);
+          if (row.some((value) => value.trim() !== "")) {
+            result.push(row);
+          }
+          row = [];
+          cell = "";
+        } else {
+          cell += char;
+        }
+      }
+
+      row.push(cell);
+      if (row.some((value) => value.trim() !== "")) {
+        result.push(row);
+      }
+
+      if (!result.length) {
+        return [];
+      }
+
+      const headers = result[0].map(normalizeHeader);
+      importSource = headers.some((header) => VALUE_COLUMNS.includes(header))
+        ? "Value export CSV"
+        : "RFID mapper CSV";
+      return result.slice(1).map((values, index) => {
+        const item = {};
+        headers.forEach((header, headerIndex) => {
+          item[header] = values[headerIndex] || "";
+        });
+        item.__id = item.uid || item.variable || String(index + 1);
+        VALUE_COLUMNS.forEach((column) => {
+          if (!(column in item)) {
+            item[column] = "";
+          }
+        });
+        return item;
+      });
+    }
+
+    function normalizeHeader(header) {
+      const cleaned = String(header || "").replace(/^\uFEFF/, "").trim();
+      const upper = cleaned.toUpperCase();
+      const baseColumns = {
+        NO: "no",
+        VARIABLE: "variable",
+        TYPE: "type",
+        UID: "uid"
+      };
+
+      if (baseColumns[upper]) {
+        return baseColumns[upper];
+      }
+      if (VALUE_COLUMNS.includes(upper)) {
+        return upper;
+      }
+      return cleaned;
+    }
+
+    function buildCsv() {
+      const baseColumns = ["no", "variable", "type", "uid"];
+      const columns = [...baseColumns, ...VALUE_COLUMNS];
+      const lines = [columns.join(",")];
+      rows.forEach((row, index) => {
+        const normalized = { ...row, no: row.no || String(index + 1) };
+        lines.push(columns.map((column) => csvCell(normalized[column] || "")).join(","));
+      });
+      return lines.join("\n");
+    }
+
+    function csvCell(value) {
+      const text = String(value);
+      return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    }
+
+    function isMapped(row) {
+      return Boolean(row.VALUE_KIND || row.PROPERTY_TYPE || row.ACTION_TYPE);
+    }
+
+    function filteredRows() {
+      const query = els.searchInput.value.trim().toUpperCase();
+      const type = els.typeFilter.value;
+      const mapped = els.mappedFilter.value;
+      return rows.filter((row) => {
+        const haystack = `${row.variable || ""} ${row.uid || ""} ${row.type || ""}`.toUpperCase();
+        if (query && !haystack.includes(query)) {
+          return false;
+        }
+        if (type && row.type !== type) {
+          return false;
+        }
+        if (mapped === "mapped" && !isMapped(row)) {
+          return false;
+        }
+        if (mapped === "unmapped" && isMapped(row)) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function render() {
+      visibleIds = filteredRows().map((row) => row.__id);
+      els.cardBody.innerHTML = "";
+      els.emptyState.style.display = rows.length ? "none" : "block";
+
+      filteredRows().forEach((row) => {
+        const tr = document.createElement("tr");
+        if (selectedIds.has(row.__id)) {
+          tr.classList.add("selected");
+        }
+        if (isMapped(row)) {
+          tr.classList.add("done");
+        }
+
+        tr.innerHTML = `
+          <td><input type="checkbox" data-select="${escapeHtml(row.__id)}" ${selectedIds.has(row.__id) ? "checked" : ""}></td>
+          <td>${escapeHtml(row.no || "")}</td>
+          <td class="mono">${escapeHtml(row.variable || "")}</td>
+          <td><span class="badge">${escapeHtml(row.type || "")}</span></td>
+          <td>${valueBadge(row)}</td>
+          <td class="mono">${escapeHtml(row.uid || "")}</td>
+          <td><button class="tiny" data-edit="${escapeHtml(row.__id)}">Edit</button></td>
+        `;
+        els.cardBody.appendChild(tr);
+      });
+
+      els.cardBody.querySelectorAll("[data-select]").forEach((checkbox) => {
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) {
+            selectedIds.add(checkbox.dataset.select);
+          } else {
+            selectedIds.delete(checkbox.dataset.select);
+          }
+          updateCounts();
+          render();
+        });
+      });
+
+      els.cardBody.querySelectorAll("[data-edit]").forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedIds = new Set([button.dataset.edit]);
+          const row = rows.find((item) => item.__id === button.dataset.edit);
+          if (row) {
+            loadRowIntoForm(row);
+          }
+          render();
+        });
+      });
+
+      updateCounts();
+      updateExport();
+    }
+
+    function valueBadge(row) {
+      if (!isMapped(row)) {
+        return '<span class="badge">EMPTY</span>';
+      }
+      const label = row.PROPERTY_TYPE || row.ACTION_TYPE || row.VALUE_KIND;
+      return `<span class="badge mapped">${escapeHtml(label)}</span>`;
+    }
+
+    function updateCounts() {
+      els.totalCount.textContent = String(rows.length);
+      els.selectedCount.textContent = String(selectedIds.size);
+      els.mappedCount.textContent = String(rows.filter(isMapped).length);
+      if (!selectedIds.size) {
+        els.targetPreview.value = "Pilih kartu dulu";
+      } else if (selectedIds.size === 1) {
+        const row = rows.find((item) => selectedIds.has(item.__id));
+        els.targetPreview.value = row ? row.variable : "1 kartu";
+      } else {
+        els.targetPreview.value = `${selectedIds.size} kartu dipilih`;
+      }
+      els.statusPill.textContent = rows.length ? `${importSource}: ${rows.length} kartu loaded` : "Belum ada CSV";
+      els.toggleAll.checked = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+    }
+
+    function updateTypeFilter() {
+      const types = [...new Set(rows.map((row) => row.type).filter(Boolean))].sort();
+      els.typeFilter.innerHTML = '<option value="">Semua type</option>' + types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("");
+    }
+
+    function updateModeVisibility() {
+      const mode = els.mapperMode.value;
+      els.propertyFields.classList.toggle("hidden", mode !== "PROPERTY");
+      els.communityFields.classList.toggle("hidden", mode !== "COMMUNITY_CHEST");
+      els.chanceFields.classList.toggle("hidden", mode !== "CHANCE");
+      els.customFields.classList.toggle("hidden", mode !== "CUSTOM");
+
+      const kind = els.propertyKind.value;
+      els.propFields.classList.toggle("hidden", mode !== "PROPERTY" || kind !== "PROP");
+      els.stationFields.classList.toggle("hidden", mode !== "PROPERTY" || kind !== "STATION");
+      els.companyFields.classList.toggle("hidden", mode !== "PROPERTY" || kind !== "COMPANY");
+      els.chanceValueWrap.classList.toggle("hidden", els.chanceAction.value === "ACTION_ONLY");
+    }
+
+    function formToValues() {
+      const mode = els.mapperMode.value;
+      const values = emptyValueColumns();
+      values.VALUE_KIND = mode;
+
+      if (mode === "PROPERTY") {
+        const kind = els.propertyKind.value;
+        values.PROPERTY_TYPE = kind;
+        values.GROUP = els.groupName.value.trim();
+        const ids = fieldIds[kind];
+        ids.forEach((id) => {
+          values[columnByInput[id]] = $(id).value.trim();
+        });
+      }
+
+      if (mode === "COMMUNITY_CHEST") {
+        values.ACTION_TYPE = els.communityAction.value;
+        values.VALUE = els.communityValue.value.trim();
+      }
+
+      if (mode === "CHANCE") {
+        values.ACTION_TYPE = els.chanceAction.value;
+        values.VALUE = els.chanceAction.value === "ACTION_ONLY" ? "" : els.chanceValue.value.trim();
+      }
+
+      if (mode === "CUSTOM") {
+        values.ACTION_TYPE = els.customKind.value.trim().toUpperCase();
+        values.VALUE = els.customValue.value.trim();
+      }
+
+      return values;
+    }
+
+    function emptyValueColumns() {
+      return Object.fromEntries(VALUE_COLUMNS.map((column) => [column, ""]));
+    }
+
+    function applyToSelected() {
+      if (!selectedIds.size) {
+        alert("Pilih satu atau beberapa kartu dulu.");
+        return;
+      }
+
+      const values = formToValues();
+      rows = rows.map((row) => selectedIds.has(row.__id) ? { ...row, ...values } : row);
+      persist();
+      render();
+    }
+
+    function clearSelectedValues() {
+      if (!selectedIds.size) {
+        alert("Pilih kartu dulu.");
+        return;
+      }
+      rows = rows.map((row) => selectedIds.has(row.__id) ? { ...row, ...emptyValueColumns() } : row);
+      persist();
+      render();
+    }
+
+    function loadSelectedRow() {
+      if (selectedIds.size !== 1) {
+        alert("Pilih tepat 1 row untuk load ke form.");
+        return;
+      }
+      const id = [...selectedIds][0];
+      const row = rows.find((item) => item.__id === id);
+      if (row) {
+        loadRowIntoForm(row);
+      }
+    }
+
+    function loadRowIntoForm(row) {
+      if (row.VALUE_KIND === "COMMUNITY_CHEST") {
+        els.mapperMode.value = "COMMUNITY_CHEST";
+        els.communityAction.value = row.ACTION_TYPE || "RECEIVE";
+        els.communityValue.value = row.VALUE || "";
+      } else if (row.VALUE_KIND === "CHANCE") {
+        els.mapperMode.value = "CHANCE";
+        els.chanceAction.value = row.ACTION_TYPE || "RECEIVE";
+        els.chanceValue.value = row.VALUE || "";
+      } else if (row.VALUE_KIND === "CUSTOM") {
+        els.mapperMode.value = "CUSTOM";
+        els.customKind.value = row.ACTION_TYPE || "";
+        els.customValue.value = row.VALUE || "";
+      } else {
+        els.mapperMode.value = "PROPERTY";
+        els.propertyKind.value = row.PROPERTY_TYPE || guessPropertyKind(row) || "PROP";
+        els.groupName.value = row.GROUP || "";
+        Object.entries(columnByInput).forEach(([inputId, column]) => {
+          if ($(inputId)) {
+            $(inputId).value = row[column] || "";
+          }
+        });
+      }
+      updateModeVisibility();
+      updateCounts();
+    }
+
+    function guessPropertyKind(row) {
+      const variable = String(row.variable || "").toUpperCase();
+      if (variable.startsWith("STATION")) {
+        return "STATION";
+      }
+      if (variable.startsWith("COMP")) {
+        return "COMPANY";
+      }
+      return "PROP";
+    }
+
+    function hydrateInitialFormFromSelection() {
+      if (selectedIds.size !== 1) {
+        return;
+      }
+      const row = rows.find((item) => selectedIds.has(item.__id));
+      if (row && isMapped(row)) {
+        loadRowIntoForm(row);
+      }
+    }
+
+    function buildCpp() {
+      const lines = rows.map((row) => {
+        return `  {"${escapeCpp(row.uid)}", "${escapeCpp(row.variable)}", "${escapeCpp(row.type)}", "${escapeCpp(row.VALUE_KIND)}", "${escapeCpp(row.PROPERTY_TYPE)}", "${escapeCpp(row.ACTION_TYPE)}", ${num(row.VALUE)}, ${num(row.PRICE)}, ${num(row.RENT)}, ${num(row.RENT_COLORSET)}, ${num(row.RENT_1)}, ${num(row.RENT_2)}, ${num(row.RENT_3)}, ${num(row.RENT_4)}, ${num(row.RENT_HOTEL)}, ${num(row.HOUSE_COST)}, ${num(row.HOTELS_COST)}, ${num(row.MORTAGE_PRICE)}, ${num(row.UNMORTAGE_PRICE)}}`;
+      }).join(",\n");
+
+      return `struct MonopolisCardValue {
+  const char* uid;
+  const char* variable;
+  const char* csvType;
+  const char* valueKind;
+  const char* propertyType;
+  const char* actionType;
+  int value;
+  int price;
+  int rent;
+  int rentColorset;
+  int rent1;
+  int rent2;
+  int rent3;
+  int rent4;
+  int rentHotel;
+  int houseCost;
+  int hotelsCost;
+  int mortagePrice;
+  int unmortagePrice;
+};
+
+const MonopolisCardValue MONOPOLIS_CARD_VALUES[] = {
+${lines}
+};
+
+const int MONOPOLIS_CARD_VALUE_COUNT = sizeof(MONOPOLIS_CARD_VALUES) / sizeof(MONOPOLIS_CARD_VALUES[0]);`;
+    }
+
+    function num(value) {
+      const text = String(value || "").trim();
+      return text === "" ? "0" : String(Number(text));
+    }
+
+    function escapeCpp(value) {
+      return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    }
+
+    function updateExport() {
+      els.exportText.value = els.exportKind.value === "cpp" ? buildCpp() : buildCsv();
+    }
+
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    }
+
+    function restore() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if (Array.isArray(stored) && stored.length) {
+          rows = stored.map((row, index) => {
+            const normalized = { ...row, __id: row.__id || row.uid || row.variable || String(index + 1) };
+            VALUE_COLUMNS.forEach((column) => {
+              if (!(column in normalized)) {
+                normalized[column] = "";
+              }
+            });
+            return normalized;
+          });
+          importSource = "Draft browser";
+          updateTypeFilter();
+          render();
+        }
+      } catch (error) {
+        rows = [];
+      }
+    }
+
+    function downloadCsv() {
+      const blob = new Blob([buildCsv()], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = els.fileName.value.trim() || "monopolis-card-values.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyText(text) {
+      await navigator.clipboard.writeText(text);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    els.csvInput.addEventListener("change", async () => {
+      const file = els.csvInput.files[0];
+      if (!file) {
+        return;
+      }
+      const text = await file.text();
+      rows = parseCsv(text);
+      selectedIds.clear();
+      updateTypeFilter();
+      persist();
+      render();
+    });
+
+    els.mapperMode.addEventListener("change", updateModeVisibility);
+    els.propertyKind.addEventListener("change", updateModeVisibility);
+    els.chanceAction.addEventListener("change", updateModeVisibility);
+    els.applyBtn.addEventListener("click", applyToSelected);
+    els.clearSelectedBtn.addEventListener("click", clearSelectedValues);
+    els.loadSelectedBtn.addEventListener("click", loadSelectedRow);
+    els.searchInput.addEventListener("input", render);
+    els.typeFilter.addEventListener("change", render);
+    els.mappedFilter.addEventListener("change", render);
+    els.exportKind.addEventListener("change", updateExport);
+    els.copyCsvBtn.addEventListener("click", () => copyText(buildCsv()));
+    els.copyCodeBtn.addEventListener("click", () => copyText(buildCpp()));
+    els.downloadCsvBtn.addEventListener("click", downloadCsv);
+
+    els.selectVisibleBtn.addEventListener("click", () => {
+      visibleIds.forEach((id) => selectedIds.add(id));
+      hydrateInitialFormFromSelection();
+      render();
+    });
+
+    els.clearSelectionBtn.addEventListener("click", () => {
+      selectedIds.clear();
+      render();
+    });
+
+    els.selectByTypeBtn.addEventListener("click", () => {
+      const type = els.typeFilter.value;
+      if (!type) {
+        alert("Pilih filter type dulu, misal CITY / CHANCE.");
+        return;
+      }
+      rows.filter((row) => row.type === type).forEach((row) => selectedIds.add(row.__id));
+      render();
+    });
+
+    els.toggleAll.addEventListener("change", () => {
+      if (els.toggleAll.checked) {
+        visibleIds.forEach((id) => selectedIds.add(id));
+      } else {
+        visibleIds.forEach((id) => selectedIds.delete(id));
+      }
+      render();
+    });
+
+    VALUE_COLUMNS.concat(["VALUE_KIND", "PROPERTY_TYPE", "ACTION_TYPE"]).forEach(() => {});
+    document.querySelectorAll("input, select").forEach((input) => {
+      if (!["searchInput", "typeFilter", "mappedFilter", "exportKind", "csvInput", "toggleAll", "fileName"].includes(input.id)) {
+        input.addEventListener("input", updateExport);
+        input.addEventListener("change", updateExport);
+      }
+    });
+
+    updateModeVisibility();
+    restore();
+    render();
+  </script>
+</body>
+</html>

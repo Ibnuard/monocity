@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monopolis RFID Mapper</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18201b;
+      --muted: #657069;
+      --line: #d8ddd5;
+      --paper: #f6f2e8;
+      --panel: #fffdf6;
+      --accent: #0d7a61;
+      --accent-dark: #075844;
+      --warn: #b2432e;
+      --chip: #e9efe7;
+      --shadow: 0 18px 50px rgba(24, 32, 27, 0.12);
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(24,32,27,0.035) 1px, transparent 1px) 0 0 / 32px 32px,
+        linear-gradient(rgba(24,32,27,0.03) 1px, transparent 1px) 0 0 / 32px 32px,
+        var(--paper);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 36px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #f3c84b;
+      box-shadow: 4px 4px 0 var(--ink);
+      font-weight: 900;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 42px);
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #b8c0b6;
+    }
+
+    .status.connected .dot {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(13, 122, 97, 0.16);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.8fr) minmax(420px, 1.2fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 246, 0.92);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .scan-box {
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #101814;
+      color: #d9ff8a;
+      padding: 18px;
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+
+    .scan-label {
+      color: #9ab39d;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .uid {
+      display: block;
+      margin-top: 8px;
+      min-height: 44px;
+      overflow-wrap: anywhere;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: clamp(28px, 7vw, 44px);
+      line-height: 1;
+    }
+
+    .flow-state {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      margin-top: 12px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #e2eee7;
+      color: var(--accent-dark);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffef9;
+      color: var(--ink);
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(13, 122, 97, 0.14);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 1px solid var(--ink);
+      border-radius: 8px;
+      background: var(--chip);
+      color: var(--ink);
+      padding: 10px 13px;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fffef9;
+    }
+
+    button.danger {
+      color: #fffef9;
+      background: var(--warn);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.52;
+      box-shadow: none;
+    }
+
+    .hint {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 11px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .mono {
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    .empty {
+      padding: 30px 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .table-wrap {
+      max-height: 470px;
+      overflow: auto;
+    }
+
+    .tiny {
+      padding: 6px 8px;
+      box-shadow: 1px 1px 0 var(--ink);
+      font-size: 12px;
+    }
+
+    .inline-actions {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    tr.editing-row td {
+      background: #fff4c7;
+    }
+
+    .export-box {
+      margin-top: 18px;
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .log {
+      margin-top: 14px;
+      max-height: 130px;
+      overflow: auto;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.46);
+      padding: 10px;
+      color: var(--muted);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 860px) {
+      .topbar,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="topbar">
+      <div class="brand">
+        <div class="mark">RF</div>
+        <div>
+          <h1>Monopolis RFID Mapper</h1>
+          <p class="subtitle">Scan kartu, beri nama variable, export ke kode Arduino.</p>
+        </div>
+      </div>
+      <div class="status" id="status"><span class="dot"></span><span id="statusText">Belum connect</span></div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <header>
+          <h2>Scan & Mapping</h2>
+        </header>
+        <div class="panel-body">
+          <div class="scan-box">
+            <div class="scan-label">UID terakhir</div>
+            <span class="uid" id="lastUid">-</span>
+          </div>
+          <div class="flow-state" id="flowState">Connect serial lalu scan kartu pertama.</div>
+
+          <div class="actions">
+            <button class="primary" id="connectBtn">Connect Serial</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+          </div>
+
+          <p class="hint">
+            Pakai Chrome atau Edge. Pilih COM NodeMCU, baud rate 115200, lalu scan kartu RFID.
+            Setelah UID muncul, isi nama variable lalu tekan Enter. Kalau UID sudah pernah disimpan,
+            form otomatis membuka data lama untuk diedit.
+          </p>
+
+          <div class="row">
+            <div>
+              <label for="typeInput">Type</label>
+              <select id="typeInput">
+                <option value="PLAYER">PLAYER</option>
+                <option value="CITY">CITY</option>
+                <option value="CHANCE">CHANCE</option>
+                <option value="COMMUNITY_CHEST">COMMUNITY_CHEST</option>
+                <option value="PROPERTY_ACTION">PROPERTY_ACTION</option>
+                <option value="BANK">BANK</option>
+                <option value="CUSTOM">CUSTOM</option>
+              </select>
+            </div>
+            <div>
+              <label for="varInput">Variable name</label>
+              <input id="varInput" placeholder="PLAYER_CARD_1" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="primary" id="saveBtn">Simpan Mapping</button>
+            <button id="suggestBtn">Suggest Nama</button>
+            <button id="copyUidBtn">Copy UID</button>
+            <button id="newScanBtn">Reset Form</button>
+          </div>
+
+          <div class="log" id="serialLog">Serial log akan muncul di sini.</div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <header>
+          <h2>Daftar Kartu</h2>
+        </header>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Variable</th>
+                <th>Type</th>
+                <th>UID</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mappingBody"></tbody>
+          </table>
+          <div class="empty" id="emptyState">Belum ada mapping. Scan kartu pertama dulu.</div>
+        </div>
+        <div class="panel-body">
+          <div class="actions">
+            <button id="copyCsvBtn">Copy CSV</button>
+            <button id="downloadCsvBtn">Download CSV</button>
+            <button id="copyCodeBtn">Copy Kode</button>
+            <button class="danger" id="clearBtn">Clear Semua</button>
+          </div>
+
+          <div class="export-box">
+            <label for="exportText">Export C++</label>
+            <textarea id="exportText" readonly></textarea>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "monopolis-rfid-mapping-v1";
+    const BAUD_RATE = 115200;
+
+    let port = null;
+    let reader = null;
+    let keepReading = false;
+    let serialBuffer = "";
+    let lastUid = "";
+    let editingUid = "";
+    let lastHandledUid = "";
+    let lastHandledUidAt = 0;
+    let mappings = loadMappings();
+
+    const statusEl = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+    const lastUidEl = document.getElementById("lastUid");
+    const typeInput = document.getElementById("typeInput");
+    const varInput = document.getElementById("varInput");
+    const serialLog = document.getElementById("serialLog");
+    const mappingBody = document.getElementById("mappingBody");
+    const emptyState = document.getElementById("emptyState");
+    const exportText = document.getElementById("exportText");
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const flowState = document.getElementById("flowState");
+    const saveBtn = document.getElementById("saveBtn");
+
+    function setFlowState(text) {
+      flowState.textContent = text;
+    }
+
+    function setStatus(connected, text) {
+      statusEl.classList.toggle("connected", connected);
+      statusText.textContent = text;
+      connectBtn.disabled = connected;
+      disconnectBtn.disabled = !connected;
+    }
+
+    function appendLog(line) {
+      const old = serialLog.textContent === "Serial log akan muncul di sini." ? "" : serialLog.textContent;
+      serialLog.textContent = (old + line + "\n").split("\n").slice(-50).join("\n");
+      serialLog.scrollTop = serialLog.scrollHeight;
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function extractUid(line) {
+      const tokens = line.toUpperCase().match(/[0-9A-F]{8,20}/g);
+      if (!tokens || !tokens.length) {
+        return "";
+      }
+      return tokens[tokens.length - 1];
+    }
+
+    function handleSerialLine(line) {
+      const clean = line.trim();
+      if (!clean) {
+        return;
+      }
+      appendLog(clean);
+
+      const uid = extractUid(clean);
+      if (!uid) {
+        return;
+      }
+
+      const now = Date.now();
+      if (uid === lastHandledUid && now - lastHandledUidAt < 4000) {
+        return;
+      }
+      if (uid === lastUid && document.activeElement === varInput) {
+        return;
+      }
+      lastHandledUid = uid;
+      lastHandledUidAt = now;
+
+      lastUid = uid;
+      lastUidEl.textContent = uid;
+
+      const existing = mappings.find((item) => item.uid === uid);
+      if (existing) {
+        loadMappingIntoForm(existing, "UID sudah ada. Edit lalu Enter untuk update.");
+      } else {
+        editingUid = "";
+        varInput.value = suggestName(typeInput.value);
+        varInput.select();
+        saveBtn.textContent = "Simpan Mapping";
+        setFlowState("UID baru. Isi variable lalu Enter untuk simpan.");
+        renderMappings();
+      }
+    }
+
+    async function connectSerial() {
+      if (!("serial" in navigator)) {
+        alert("Browser ini belum support Web Serial. Pakai Chrome atau Edge terbaru.");
+        return;
+      }
+
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: BAUD_RATE });
+      keepReading = true;
+      setStatus(true, "Connected 115200");
+      setFlowState("Serial terhubung. Scan kartu RFID.");
+      readLoop().catch((error) => appendLog("# ERROR: " + error.message));
+    }
+
+    async function readLoop() {
+      const decoder = new TextDecoder();
+      reader = port.readable.getReader();
+
+      try {
+        while (keepReading) {
+          const result = await reader.read();
+          if (result.done) {
+            break;
+          }
+
+          if (!result.value || result.value.length === 0) {
+            await sleep(20);
+            continue;
+          }
+
+          serialBuffer += decoder.decode(result.value, { stream: true });
+          if (serialBuffer.length > 4000) {
+            serialBuffer = serialBuffer.slice(-4000);
+          }
+
+          const lines = serialBuffer.split(/\r?\n/);
+          serialBuffer = lines.pop() || "";
+
+          const visibleLines = lines.slice(-20);
+          visibleLines.forEach(handleSerialLine);
+
+          await sleep(8);
+        }
+      } catch (error) {
+        appendLog("# ERROR: " + error.message);
+      } finally {
+        if (reader) {
+          reader.releaseLock();
+        }
+      }
+    }
+
+    async function disconnectSerial() {
+      keepReading = false;
+
+      if (reader) {
+        await reader.cancel();
+        reader = null;
+      }
+      if (port) {
+        await port.close();
+        port = null;
+      }
+
+      setStatus(false, "Belum connect");
+    }
+
+    function normalizeVariableName(value) {
+      return value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+    }
+
+    function suggestName(type) {
+      const prefix = type === "CUSTOM" ? "CARD" : type;
+      const count = mappings.filter((item) => item.type === type).length + 1;
+      return prefix + "_" + count;
+    }
+
+    function loadMappingIntoForm(item, message) {
+      lastUid = item.uid;
+      editingUid = item.uid;
+      lastUidEl.textContent = item.uid;
+      typeInput.value = item.type;
+      varInput.value = item.variable;
+      varInput.focus();
+      varInput.select();
+      saveBtn.textContent = "Update Mapping";
+      setFlowState(message || "Mode edit. Ubah type/nama lalu Enter untuk update.");
+      renderMappings();
+    }
+
+    function resetForm() {
+      editingUid = "";
+      lastUid = "";
+      lastUidEl.textContent = "-";
+      varInput.value = suggestName(typeInput.value);
+      saveBtn.textContent = "Simpan Mapping";
+      setFlowState("Form kosong. Scan kartu berikutnya.");
+      renderMappings();
+    }
+
+    function saveMapping() {
+      if (!lastUid) {
+        alert("Scan kartu dulu, UID belum ada.");
+        return;
+      }
+
+      const variable = normalizeVariableName(varInput.value);
+      if (!variable) {
+        alert("Isi nama variable dulu, contoh PLAYER_CARD_1 atau CHANCE_1.");
+        varInput.focus();
+        return;
+      }
+
+      const duplicateVariable = mappings.find((item) => item.variable === variable && item.uid !== lastUid);
+      if (duplicateVariable) {
+        alert("Variable name sudah dipakai UID lain.");
+        return;
+      }
+
+      const existingIndex = mappings.findIndex((item) => item.uid === lastUid);
+      const entry = {
+        uid: lastUid,
+        variable,
+        type: typeInput.value,
+        savedAt: new Date().toISOString()
+      };
+
+      if (existingIndex >= 0) {
+        mappings[existingIndex] = entry;
+        setFlowState("Mapping diupdate. Scan kartu berikutnya.");
+      } else {
+        mappings.push(entry);
+        setFlowState("Mapping tersimpan. Scan kartu berikutnya.");
+      }
+
+      editingUid = "";
+      lastUid = "";
+      lastUidEl.textContent = "-";
+      saveBtn.textContent = "Simpan Mapping";
+      varInput.value = suggestName(typeInput.value);
+      persistAndRender();
+    }
+
+    function deleteMapping(uid) {
+      mappings = mappings.filter((item) => item.uid !== uid);
+      if (editingUid === uid || lastUid === uid) {
+        resetForm();
+        return;
+      }
+      persistAndRender();
+    }
+
+    function loadMappings() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function persistAndRender() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(mappings));
+      renderMappings();
+    }
+
+    function renderMappings() {
+      mappingBody.innerHTML = "";
+      emptyState.style.display = mappings.length ? "none" : "block";
+
+      mappings.forEach((item, index) => {
+        const tr = document.createElement("tr");
+        if (item.uid === editingUid) {
+          tr.classList.add("editing-row");
+        }
+        tr.innerHTML = `
+          <td>${index + 1}</td>
+          <td class="mono">${escapeHtml(item.variable)}</td>
+          <td>${escapeHtml(item.type)}</td>
+          <td class="mono">${escapeHtml(item.uid)}</td>
+          <td>
+            <div class="inline-actions">
+              <button class="tiny" data-edit-uid="${escapeHtml(item.uid)}">Edit</button>
+              <button class="tiny" data-delete-uid="${escapeHtml(item.uid)}">Hapus</button>
+            </div>
+          </td>
+        `;
+        mappingBody.appendChild(tr);
+      });
+
+      mappingBody.querySelectorAll("button[data-edit-uid]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const item = mappings.find((entry) => entry.uid === button.dataset.editUid);
+          if (item) {
+            loadMappingIntoForm(item);
+          }
+        });
+      });
+
+      mappingBody.querySelectorAll("button[data-delete-uid]").forEach((button) => {
+        button.addEventListener("click", () => deleteMapping(button.dataset.deleteUid));
+      });
+
+      exportText.value = buildCpp();
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function buildCsv() {
+      const rows = [["no", "variable", "type", "uid"]];
+      mappings.forEach((item, index) => rows.push([index + 1, item.variable, item.type, item.uid]));
+      return rows.map((row) => row.map(csvCell).join(",")).join("\n");
+    }
+
+    function csvCell(value) {
+      const text = String(value);
+      return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    }
+
+    function buildCpp() {
+      const defines = mappings.map((item) => `#define UID_${item.variable} "${item.uid}"`).join("\n");
+      const tableRows = mappings.map((item) => `  {"${item.uid}", "${item.variable}", "${item.type}"}`).join(",\n");
+      return `${defines}
+
+struct RfidCardMap {
+  const char* uid;
+  const char* variable;
+  const char* type;
+};
+
+const RfidCardMap RFID_CARDS[] = {
+${tableRows}
+};
+
+const int RFID_CARD_COUNT = sizeof(RFID_CARDS) / sizeof(RFID_CARDS[0]);`;
+    }
+
+    async function copyText(text) {
+      await navigator.clipboard.writeText(text);
+    }
+
+    function downloadCsv() {
+      const blob = new Blob([buildCsv()], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "monopolis-rfid-mapping.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    connectBtn.addEventListener("click", () => connectSerial().catch((error) => alert(error.message)));
+    disconnectBtn.addEventListener("click", () => disconnectSerial().catch((error) => alert(error.message)));
+    document.getElementById("saveBtn").addEventListener("click", saveMapping);
+    document.getElementById("suggestBtn").addEventListener("click", () => {
+      varInput.value = suggestName(typeInput.value);
+      varInput.focus();
+    });
+    document.getElementById("newScanBtn").addEventListener("click", resetForm);
+    document.getElementById("copyUidBtn").addEventListener("click", () => lastUid && copyText(lastUid));
+    document.getElementById("copyCsvBtn").addEventListener("click", () => copyText(buildCsv()));
+    document.getElementById("downloadCsvBtn").addEventListener("click", downloadCsv);
+    document.getElementById("copyCodeBtn").addEventListener("click", () => copyText(buildCpp()));
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      if (confirm("Hapus semua mapping dari browser ini?")) {
+        mappings = [];
+        persistAndRender();
+      }
+    });
+    varInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveMapping();
+      }
+    });
+
+    renderMappings();
+    setStatus(false, "Belum connect");
+  </script>
+</body>
+</html>
