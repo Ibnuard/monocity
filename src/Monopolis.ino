@@ -35,7 +35,10 @@ enum GameStage {
   STAGE_IDLE,
   STAGE_WAIT_PLAYER,
   STAGE_WAIT_MORTGAGE_PROPERTY,
-  STAGE_WAIT_MORTGAGE_PLAYER
+  STAGE_WAIT_MORTGAGE_PLAYER,
+  STAGE_WAIT_SELL_PROPERTY,
+  STAGE_WAIT_SELL_PRICE,
+  STAGE_WAIT_SELL_BUYER
 };
 
 PlayerState players[MAX_PLAYERS];
@@ -45,6 +48,7 @@ GameStage stage = STAGE_WAIT_START;
 int playerCount = 0;
 int pendingCard = -1;
 int pendingProperty = -1;
+int pendingPrice = 50;
 unsigned long pendingStartedAt = 0;
 unsigned long lastButtonAt = 0;
 unsigned long lastScrollAt = 0;
@@ -100,12 +104,31 @@ String getUID() {
   return uidStr;
 }
 
-bool buttonPressed() {
-  if (digitalRead(BTN_START) == LOW && millis() - lastButtonAt > 400) {
-    lastButtonAt = millis();
-    return true;
+enum ButtonEvent {
+  BTN_NONE,
+  BTN_CLICK,
+  BTN_LONG
+};
+
+ButtonEvent checkButton() {
+  if (digitalRead(BTN_START) == LOW) {
+    unsigned long startPress = millis();
+    while (digitalRead(BTN_START) == LOW) {
+      if (millis() - startPress > 1200) {
+        while (digitalRead(BTN_START) == LOW) {
+          delay(10);
+        }
+        lastButtonAt = millis();
+        return BTN_LONG;
+      }
+      delay(10);
+    }
+    if (millis() - lastButtonAt > 400) {
+      lastButtonAt = millis();
+      return BTN_CLICK;
+    }
   }
-  return false;
+  return BTN_NONE;
 }
 
 int findCardByUid(const String& uid) {
@@ -129,6 +152,7 @@ int findPlayerByCard(int cardIndex) {
 void resetPending() {
   pendingCard = -1;
   pendingProperty = -1;
+  pendingPrice = 50;
   pendingStartedAt = 0;
 }
 
@@ -183,7 +207,10 @@ void startPending(GameStage nextStage, int cardIndex, String top, String bottom)
 void checkPendingTimeout() {
   if ((stage == STAGE_WAIT_PLAYER ||
        stage == STAGE_WAIT_MORTGAGE_PROPERTY ||
-       stage == STAGE_WAIT_MORTGAGE_PLAYER) &&
+       stage == STAGE_WAIT_MORTGAGE_PLAYER ||
+       stage == STAGE_WAIT_SELL_PROPERTY ||
+       stage == STAGE_WAIT_SELL_PRICE ||
+       stage == STAGE_WAIT_SELL_BUYER) &&
       millis() - pendingStartedAt > ACTION_TIMEOUT) {
     showMessage("Waktu habis!", "Ulangi scan", false, 1200);
     beepError();
@@ -339,8 +366,7 @@ bool payBank(int playerIndex, int amount, String title) {
   }
 
   if (players[playerIndex].saldo < amount) {
-    players[playerIndex].saldo = 0;
-    showMessage("Uang tidak cukup", "Saldo jadi 0", false, 1600);
+    showMessage("Uang tidak cukup", "Butuh " + String(amount), false, 1600);
     beepError();
     return false;
   }
@@ -356,12 +382,8 @@ void payOwner(int payer, int owner, int amount) {
     return;
   }
 
-  int paid = amount;
   if (players[payer].saldo < amount) {
-    paid = players[payer].saldo;
-    players[payer].saldo = 0;
-    players[owner].saldo += paid;
-    showMessage("Uang tidak cukup", "Bayar sisa " + String(paid), false, 1800);
+    showMessage("Uang tidak cukup", "Butuh " + String(amount), false, 1800);
     beepError();
     return;
   }
@@ -677,6 +699,82 @@ void handleMortgagePlayer(int cardIndex) {
   goIdle();
 }
 
+void handleSellPropertyScan(int cardIndex) {
+  if (CARD_DEFS[cardIndex].kind != CARD_PROPERTY) {
+    showMessage("Scan kartu", "property", false, 1000);
+    beepError();
+    return;
+  }
+
+  int owner = properties[cardIndex].owner;
+  if (owner < 0) {
+    showMessage("Belum dimiliki", "Tidak bisa jual", false, 1500);
+    beepError();
+    return;
+  }
+
+  if (properties[cardIndex].level > 0) {
+    showMessage("Ada rumah/hotel", "Jual bangunan dl", false, 1600);
+    beepError();
+    return;
+  }
+
+  pendingProperty = cardIndex;
+  pendingPrice = 50;
+  pendingStartedAt = millis();
+  stage = STAGE_WAIT_SELL_PRICE;
+  const CardDef& card = CARD_DEFS[cardIndex];
+  showMessage(String(card.name) + " P" + String(owner + 1),
+              "Harga: 50 ->Ownr", true, 0);
+}
+
+void handleSellPriceScan(int cardIndex) {
+  int ownerIndex = properties[pendingProperty].owner;
+  int scannedPlayer = findPlayerByCard(cardIndex);
+  if (scannedPlayer < 0 || scannedPlayer != ownerIndex) {
+    showMessage("Harus kartu P" + String(ownerIndex + 1), "Verifikasi owner", false, 1500);
+    beepError();
+    return;
+  }
+
+  pendingStartedAt = millis();
+  stage = STAGE_WAIT_SELL_BUYER;
+  showMessage("Harga: " + String(pendingPrice), "Scan Pembeli", true, 0);
+}
+
+void handleSellBuyerScan(int cardIndex) {
+  int buyerIndex = findPlayerByCard(cardIndex);
+  if (buyerIndex < 0) {
+    showMessage("Scan kartu", "player aktif", false, 1000);
+    beepError();
+    return;
+  }
+
+  int ownerIndex = properties[pendingProperty].owner;
+  if (buyerIndex == ownerIndex) {
+    showMessage("Pembeli tidak", "boleh owner", false, 1500);
+    beepError();
+    return;
+  }
+
+  if (players[buyerIndex].saldo < pendingPrice) {
+    showMessage("Uang tidak cukup", "Butuh " + String(pendingPrice), false, 1800);
+    beepError();
+    goIdle();
+    return;
+  }
+
+  players[buyerIndex].saldo -= pendingPrice;
+  players[ownerIndex].saldo += pendingPrice;
+  properties[pendingProperty].owner = buyerIndex;
+  properties[pendingProperty].level = 0;
+  properties[pendingProperty].mortgaged = false;
+
+  showMessage("Terjual ke P" + String(buyerIndex + 1),
+              "Harga: " + String(pendingPrice), true, 2000);
+  goIdle();
+}
+
 void handleScannedCard(int cardIndex) {
   if (stage == STAGE_REGISTER) {
     registerPlayer(cardIndex);
@@ -700,6 +798,22 @@ void handleScannedCard(int cardIndex) {
 
   if (stage == STAGE_WAIT_MORTGAGE_PLAYER) {
     handleMortgagePlayer(cardIndex);
+    return;
+  }
+
+  if (stage == STAGE_WAIT_SELL_PROPERTY) {
+    handleSellPropertyScan(cardIndex);
+    return;
+  }
+
+  if (stage == STAGE_WAIT_SELL_PRICE) {
+    handleSellPriceScan(cardIndex);
+    return;
+  }
+
+  if (stage == STAGE_WAIT_SELL_BUYER) {
+    handleSellBuyerScan(cardIndex);
+    return;
   }
 }
 
@@ -730,14 +844,48 @@ void setup() {
 }
 
 void loop() {
-  if (stage == STAGE_WAIT_START && buttonPressed()) {
+  ButtonEvent btn = checkButton();
+
+  if (btn == BTN_LONG && 
+      (stage == STAGE_WAIT_SELL_PROPERTY || 
+       stage == STAGE_WAIT_SELL_PRICE || 
+       stage == STAGE_WAIT_SELL_BUYER)) {
+    showMessage("Batal Jual", "Kembali idle", false, 1200);
+    beepError();
+    goIdle();
+    return;
+  }
+
+  if (stage == STAGE_WAIT_START && btn == BTN_CLICK) {
     stage = STAGE_REGISTER;
     showMessage("Scan kartu player", "untuk daftar", true, 0);
     return;
   }
 
-  if (stage == STAGE_REGISTER && buttonPressed()) {
+  if (stage == STAGE_REGISTER && btn == BTN_CLICK) {
     startGameIfReady();
+    return;
+  }
+
+  if (stage == STAGE_IDLE && btn == BTN_CLICK) {
+    stage = STAGE_WAIT_SELL_PROPERTY;
+    pendingStartedAt = millis();
+    showMessage("Jual Property", "Scan property...", true, 0);
+    return;
+  }
+
+  if (stage == STAGE_WAIT_SELL_PRICE && btn == BTN_CLICK) {
+    pendingPrice += 50;
+    if (pendingPrice > 1000) {
+      pendingPrice = 50;
+    }
+    pendingStartedAt = millis();
+    const CardDef& propCard = CARD_DEFS[pendingProperty];
+    showMessage(String(propCard.name) + " P" + String(properties[pendingProperty].owner + 1),
+                "Harga: " + String(pendingPrice) + " ->Ownr", false, 0);
+    tone(BUZZER_PIN, 2000);
+    delay(50);
+    noTone(BUZZER_PIN);
     return;
   }
 
