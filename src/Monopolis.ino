@@ -3,7 +3,39 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPUpdateServer.h>
+#include <ArduinoOTA.h>
+
 #include "CardData.h"
+
+String targetSsid = "";
+String targetPassword = "";
+bool startConnectingFlag = false;
+bool serverSetupDone = false;
+
+const char INDEX_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>Monopolis OTA Portal</title>
+<style>
+body { font-family: sans-serif; background: #121212; color: #fff; text-align: center; padding: 20px; }
+.btn { display: inline-block; width: 80%; max-width: 300px; padding: 15px; margin: 15px; background: #6200ee; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; border: none; font-size: 16px; cursor: pointer; }
+.btn-alt { background: #03dac6; color: #000; }
+</style>
+</head>
+<body>
+<h2>Monopolis OTA Portal</h2>
+<p>Pilih mode pembaruan:</p>
+<a href='/update' class='btn'>Manual Update (firmware.bin)</a>
+<br>
+<a href='/wifi' class='btn btn-alt'>Hubungkan ke Wi-Fi (PlatformIO OTA)</a>
+</body>
+</html>
+)rawliteral";
 
 #define SS_PIN D4
 #define RST_PIN D8
@@ -16,6 +48,9 @@
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+ESP8266WebServer httpServer(80);
+ESP8266HTTPUpdateServer httpUpdater;
 
 struct PlayerState {
   int cardIndex;
@@ -38,7 +73,8 @@ enum GameStage {
   STAGE_WAIT_MORTGAGE_PLAYER,
   STAGE_WAIT_SELL_PROPERTY,
   STAGE_WAIT_SELL_PRICE,
-  STAGE_WAIT_SELL_BUYER
+  STAGE_WAIT_SELL_BUYER,
+  STAGE_OTA
 };
 
 PlayerState players[MAX_PLAYERS];
@@ -195,6 +231,158 @@ void goIdle() {
   scrollPos = 0;
   lcd.clear();
   showIdle();
+}
+
+void handleIndex() {
+  httpServer.send_P(200, "text/html", INDEX_HTML);
+}
+
+void handleWifiPage() {
+  String html = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>Wi-Fi Config</title>
+<style>
+body { font-family: sans-serif; background: #121212; color: #fff; padding: 20px; text-align: center; }
+input, select { width: 100%; max-width: 300px; padding: 12px; margin: 10px 0; box-sizing: border-box; border-radius: 6px; border: none; font-size: 14px; }
+.btn { background: #03dac6; color: #000; padding: 12px; width: 100%; max-width: 300px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
+a { color: #03dac6; text-decoration: none; display: inline-block; margin-top: 20px; }
+</style>
+</head>
+<body>
+<h2>Konfigurasi Wi-Fi</h2>
+<form action='/connect' method='POST'>
+<label>Pilih Wi-Fi:</label><br>
+<select name='ssid'>
+)rawliteral";
+
+  int n = WiFi.scanNetworks();
+  if (n == 0) {
+    html += "<option value=''>Tidak ada Wi-Fi ditemukan</option>";
+  } else {
+    for (int i = 0; i < n; ++i) {
+      html += "<option value='" + WiFi.SSID(i) + "'>" + WiFi.SSID(i) + " (" + String(WiFi.RSSI(i)) + " dBm)</option>";
+    }
+  }
+
+  html += R"rawliteral(
+</select>
+<br><br>
+<label>Password:</label><br>
+<input type='password' name='password' placeholder='Masukkan password'>
+<br><br>
+<input type='submit' value='Hubungkan' class='btn'>
+</form>
+<br>
+<a href='/'>Kembali</a>
+</body>
+</html>
+)rawliteral";
+
+  httpServer.send(200, "text/html", html);
+}
+
+void connectToTargetWiFi() {
+  lcd.clear();
+  printLine(0, "Connecting WiFi");
+  printLine(1, targetSsid.substring(0, 16));
+  beepOk();
+
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.begin(targetSsid.c_str(), targetPassword.c_str());
+
+  // Wait 15 seconds for connection
+  unsigned long startWifi = millis();
+  bool connected = false;
+  while (millis() - startWifi < 15000) {
+    if (WiFi.status() == WL_CONNECTED) {
+      connected = true;
+      break;
+    }
+    delay(500);
+  }
+
+  if (connected) {
+    ArduinoOTA.setHostname("monopolis-device");
+    ArduinoOTA.begin();
+
+    lcd.clear();
+    printLine(0, "WiFi Connected");
+    printLine(1, WiFi.localIP().toString());
+    delay(2000);
+
+    lcd.clear();
+    printLine(0, "OTA: Ready");
+    printLine(1, WiFi.localIP().toString());
+  } else {
+    // Revert to AP mode
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP("Monopolis-OTA");
+
+    lcd.clear();
+    printLine(0, "WiFi Failed!");
+    printLine(1, "Back to AP Mode");
+    delay(2000);
+
+    lcd.clear();
+    printLine(0, "AP:Monopolis-OTA");
+    printLine(1, "IP: 192.168.4.1");
+  }
+  beepOk();
+}
+
+void handleConnect() {
+  if (httpServer.hasArg("ssid")) {
+    targetSsid = httpServer.arg("ssid");
+    targetPassword = httpServer.arg("password");
+    startConnectingFlag = true;
+
+    String html = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<title>Menghubungkan...</title>
+<style>
+body { font-family: sans-serif; background: #121212; color: #fff; text-align: center; padding: 50px; }
+</style>
+</head>
+<body>
+<h2>Menghubungkan ke Wi-Fi...</h2>
+<p>Silakan periksa layar LCD perangkat Monopolis.</p>
+</body>
+</html>
+)rawliteral";
+
+    httpServer.send(200, "text/html", html);
+  } else {
+    httpServer.send(400, "text/plain", "Bad Request");
+  }
+}
+
+void startOTAMode() {
+  stage = STAGE_OTA;
+  lcd.clear();
+  printLine(0, "AP:Monopolis-OTA");
+  printLine(1, "IP: 192.168.4.1");
+  beepOk();
+
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("Monopolis-OTA");
+
+  if (!serverSetupDone) {
+    httpServer.on("/", handleIndex);
+    httpServer.on("/wifi", handleWifiPage);
+    httpServer.on("/connect", handleConnect);
+    httpUpdater.setup(&httpServer, "/update");
+    serverSetupDone = true;
+  }
+  httpServer.begin();
+
+  ArduinoOTA.setHostname("monopolis-device");
+  ArduinoOTA.begin();
 }
 
 void startPending(GameStage nextStage, int cardIndex, String top, String bottom) {
@@ -861,7 +1049,24 @@ void setup() {
 }
 
 void loop() {
+  if (stage == STAGE_OTA) {
+    httpServer.handleClient();
+    ArduinoOTA.handle();
+    
+    if (startConnectingFlag) {
+      startConnectingFlag = false;
+      connectToTargetWiFi();
+    }
+    delay(1);
+    return;
+  }
+
   ButtonEvent btn = checkButton();
+
+  if (btn == BTN_LONG && (stage == STAGE_WAIT_START || stage == STAGE_IDLE)) {
+    startOTAMode();
+    return;
+  }
 
   if (btn == BTN_LONG && 
       (stage == STAGE_WAIT_SELL_PROPERTY || 
