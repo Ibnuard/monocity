@@ -589,8 +589,25 @@ void showTurnOrder() {
   lcd.clear();
   String line1 = "";
   String line2 = "";
+
+  // Seed the random generator using micros() to ensure real randomness
+  randomSeed(micros());
+
+  int turns[MAX_PLAYERS];
   for (int i = 0; i < playerCount; i++) {
-    String part = "P" + String(i + 1) + ":" + String(i + 1) + " ";
+    turns[i] = i + 1;
+  }
+
+  // Shuffle turn order
+  for (int i = playerCount - 1; i > 0; i--) {
+    int j = random(0, i + 1);
+    int temp = turns[i];
+    turns[i] = turns[j];
+    turns[j] = temp;
+  }
+
+  for (int i = 0; i < playerCount; i++) {
+    String part = "P" + String(i + 1) + ":" + String(turns[i]) + " ";
     if (i < 2) {
       line1 += part;
     } else {
