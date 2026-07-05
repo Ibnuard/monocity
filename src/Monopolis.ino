@@ -309,6 +309,7 @@ void connectToTargetWiFi() {
   }
 
   if (connected) {
+    ArduinoOTA.end();
     ArduinoOTA.setHostname("monopolis-device");
     ArduinoOTA.begin();
 
@@ -324,6 +325,10 @@ void connectToTargetWiFi() {
     // Revert to AP mode
     WiFi.mode(WIFI_AP);
     WiFi.softAP("Monopolis-OTA");
+
+    ArduinoOTA.end();
+    ArduinoOTA.setHostname("monopolis-device");
+    ArduinoOTA.begin();
 
     lcd.clear();
     printLine(0, "WiFi Failed!");
@@ -385,6 +390,7 @@ void startOTAMode() {
   }
   httpServer.begin();
 
+  ArduinoOTA.end();
   ArduinoOTA.setHostname("monopolis-device");
   ArduinoOTA.begin();
 }
