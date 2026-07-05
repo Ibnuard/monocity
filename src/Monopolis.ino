@@ -77,6 +77,14 @@ enum GameStage {
   STAGE_OTA
 };
 
+enum ButtonEvent {
+  BTN_NONE,
+  BTN_CLICK,
+  BTN_LONG
+};
+
+ButtonEvent checkButton();
+
 PlayerState players[MAX_PLAYERS];
 PropertyState properties[CARD_COUNT];
 
@@ -84,7 +92,7 @@ GameStage stage = STAGE_WAIT_START;
 int playerCount = 0;
 int pendingCard = -1;
 int pendingProperty = -1;
-int pendingPrice = 50;
+int pendingPrice = 0;
 unsigned long pendingStartedAt = 0;
 unsigned long lastButtonAt = 0;
 unsigned long lastScrollAt = 0;
@@ -140,11 +148,7 @@ String getUID() {
   return uidStr;
 }
 
-enum ButtonEvent {
-  BTN_NONE,
-  BTN_CLICK,
-  BTN_LONG
-};
+// ButtonEvent enum moved to top of file
 
 ButtonEvent checkButton() {
   if (digitalRead(BTN_START) == LOW) {
@@ -188,7 +192,7 @@ int findPlayerByCard(int cardIndex) {
 void resetPending() {
   pendingCard = -1;
   pendingProperty = -1;
-  pendingPrice = 50;
+  pendingPrice = 0;
   pendingStartedAt = 0;
 }
 
@@ -925,12 +929,12 @@ void handleSellPropertyScan(int cardIndex) {
   }
 
   pendingProperty = cardIndex;
-  pendingPrice = 50;
+  pendingPrice = 0;
   pendingStartedAt = millis();
   stage = STAGE_WAIT_SELL_PRICE;
   const CardDef& card = CARD_DEFS[cardIndex];
   showMessage(String(card.name) + " P" + String(owner + 1),
-              "Harga: 50 ->Ownr", true, 0);
+              "Harga: 0 ->Ownr", true, 0);
 }
 
 void handleSellPriceScan(int cardIndex) {
@@ -1099,7 +1103,7 @@ void loop() {
   if (stage == STAGE_WAIT_SELL_PRICE && btn == BTN_CLICK) {
     pendingPrice += 50;
     if (pendingPrice > 1000) {
-      pendingPrice = 50;
+      pendingPrice = 0;
     }
     pendingStartedAt = millis();
     const CardDef& propCard = CARD_DEFS[pendingProperty];
