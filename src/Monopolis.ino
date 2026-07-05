@@ -909,8 +909,24 @@ void handleMortgagePlayer(int cardIndex) {
 }
 
 void handleSellPropertyScan(int cardIndex) {
+  if (CARD_DEFS[cardIndex].kind == CARD_PLAYER) {
+    int pIdx = findPlayerByCard(cardIndex);
+    if (pIdx >= 0) {
+      players[pIdx].saldo += 200;
+      showMessage("Bonus Start", "P" + String(pIdx + 1) + " +200 S:" + String(players[pIdx].saldo), true, 1800);
+      beepOk();
+      goIdle();
+      return;
+    } else {
+      showMessage("Player tidak", "terdaftar", false, 1200);
+      beepError();
+      goIdle();
+      return;
+    }
+  }
+
   if (CARD_DEFS[cardIndex].kind != CARD_PROPERTY) {
-    showMessage("Scan kartu", "property", false, 1000);
+    showMessage("Scan kartu", "property/player", false, 1200);
     beepError();
     return;
   }
@@ -1076,7 +1092,7 @@ void loop() {
       (stage == STAGE_WAIT_SELL_PROPERTY || 
        stage == STAGE_WAIT_SELL_PRICE || 
        stage == STAGE_WAIT_SELL_BUYER)) {
-    showMessage("Batal Jual", "Kembali idle", false, 1200);
+    showMessage("Batal Transaksi", "Kembali idle", false, 1200);
     beepError();
     goIdle();
     return;
@@ -1096,7 +1112,7 @@ void loop() {
   if (stage == STAGE_IDLE && btn == BTN_CLICK) {
     stage = STAGE_WAIT_SELL_PROPERTY;
     pendingStartedAt = millis();
-    showMessage("Jual Property", "Scan property...", true, 0);
+    showMessage("Jual/Lewat Start", "Scan Prop/Player", true, 0);
     return;
   }
 
