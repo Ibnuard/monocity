@@ -313,6 +313,8 @@ void connectToTargetWiFi() {
     ArduinoOTA.setHostname("monopolis-device");
     ArduinoOTA.begin();
 
+    httpServer.begin(); // Bind web server to the new station IP interface
+
     lcd.clear();
     printLine(0, "WiFi Connected");
     printLine(1, WiFi.localIP().toString());
