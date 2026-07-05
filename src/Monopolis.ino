@@ -14,6 +14,7 @@ String targetSsid = "";
 String targetPassword = "";
 bool startConnectingFlag = false;
 bool serverSetupDone = false;
+bool otaInitialized = false;
 
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -110,6 +111,46 @@ void beepOk() {
 void beepError() {
   tone(BUZZER_PIN, 700);
   delay(300);
+  noTone(BUZZER_PIN);
+}
+
+void beepGameStart() {
+  int melody[] = {1047, 1318, 1568, 2093};
+  int durations[] = {100, 100, 100, 200};
+  for (int i = 0; i < 4; i++) {
+    tone(BUZZER_PIN, melody[i]);
+    delay(durations[i]);
+  }
+  noTone(BUZZER_PIN);
+}
+
+void beepPropertyBought() {
+  int melody[] = {1568, 2093, 2637};
+  int durations[] = {80, 80, 150};
+  for (int i = 0; i < 3; i++) {
+    tone(BUZZER_PIN, melody[i]);
+    delay(durations[i]);
+  }
+  noTone(BUZZER_PIN);
+}
+
+void beepPayRent() {
+  tone(BUZZER_PIN, 2093);
+  delay(60);
+  noTone(BUZZER_PIN);
+  delay(20);
+  tone(BUZZER_PIN, 3136);
+  delay(150);
+  noTone(BUZZER_PIN);
+}
+
+void beepUpgrade() {
+  int melody[] = {2093, 2349, 2637, 2793, 3136};
+  int durations[] = {60, 60, 60, 60, 120};
+  for (int i = 0; i < 5; i++) {
+    tone(BUZZER_PIN, melody[i]);
+    delay(durations[i]);
+  }
   noTone(BUZZER_PIN);
 }
 
@@ -309,9 +350,12 @@ void connectToTargetWiFi() {
   }
 
   if (connected) {
-    ArduinoOTA.end();
+    if (otaInitialized) {
+      ArduinoOTA.end();
+    }
     ArduinoOTA.setHostname("monopolis-device");
     ArduinoOTA.begin();
+    otaInitialized = true;
 
     httpServer.begin(); // Bind web server to the new station IP interface
 
@@ -328,9 +372,12 @@ void connectToTargetWiFi() {
     WiFi.mode(WIFI_AP);
     WiFi.softAP("Monopolis-OTA");
 
-    ArduinoOTA.end();
+    if (otaInitialized) {
+      ArduinoOTA.end();
+    }
     ArduinoOTA.setHostname("monopolis-device");
     ArduinoOTA.begin();
+    otaInitialized = true;
 
     lcd.clear();
     printLine(0, "WiFi Failed!");
@@ -392,9 +439,12 @@ void startOTAMode() {
   }
   httpServer.begin();
 
-  ArduinoOTA.end();
+  if (otaInitialized) {
+    ArduinoOTA.end();
+  }
   ArduinoOTA.setHostname("monopolis-device");
   ArduinoOTA.begin();
+  otaInitialized = true;
 }
 
 void startPending(GameStage nextStage, int cardIndex, String top, String bottom) {
@@ -572,7 +622,9 @@ bool payBank(int playerIndex, int amount, String title) {
   }
 
   players[playerIndex].saldo -= amount;
-  showMessage(title, "- " + String(amount) + " S:" + String(players[playerIndex].saldo), true, 1600);
+  showMessage(title, "- " + String(amount) + " S:" + String(players[playerIndex].saldo), false, 0);
+  beepPayRent();
+  delay(1600);
   return true;
 }
 
@@ -592,8 +644,10 @@ void payOwner(int payer, int owner, int amount) {
   players[owner].saldo += amount;
   showMessage("Bayar P" + String(owner + 1),
               String(amount) + " S:" + String(players[payer].saldo),
-              true,
-              1600);
+              false,
+              0);
+  beepPayRent();
+  delay(1600);
 }
 
 void buyOrUpgradeProperty(int cardIndex, int playerIndex) {
@@ -617,7 +671,9 @@ void buyOrUpgradeProperty(int cardIndex, int playerIndex) {
     state.owner = playerIndex;
     state.level = 0;
     state.mortgaged = false;
-    showMessage("Property terbeli", "P" + String(playerIndex + 1) + " -" + String(price), true, 1800);
+    showMessage("Property terbeli", "P" + String(playerIndex + 1) + " -" + String(price), false, 0);
+    beepPropertyBought();
+    delay(1800);
     return;
   }
 
@@ -660,10 +716,12 @@ void buyOrUpgradeProperty(int cardIndex, int playerIndex) {
     players[playerIndex].saldo -= cost;
     state.level++;
     if (state.level >= 5) {
-      showMessage("Hotel terbeli", "P" + String(playerIndex + 1) + " -" + String(cost), true, 1800);
+      showMessage("Hotel terbeli", "P" + String(playerIndex + 1) + " -" + String(cost), false, 0);
     } else {
-      showMessage("Rumah terbeli", "Level " + String(state.level) + " -" + String(cost), true, 1800);
+      showMessage("Rumah terbeli", "Level " + String(state.level) + " -" + String(cost), false, 0);
     }
+    beepUpgrade();
+    delay(1800);
     return;
   }
 
@@ -680,7 +738,9 @@ void applyMoneyCard(int cardIndex, int playerIndex) {
 
   if (card.action == ACT_RECEIVE) {
     players[playerIndex].saldo += card.value;
-    showMessage(card.name, "+ " + String(card.value) + " S:" + String(players[playerIndex].saldo), true, 1700);
+    showMessage(card.name, "+ " + String(card.value) + " S:" + String(players[playerIndex].saldo), false, 0);
+    beepUpgrade();
+    delay(1700);
     return;
   }
 
@@ -816,7 +876,7 @@ void showTurnOrder() {
   }
   printLine(0, line1);
   printLine(1, line2);
-  beepOk();
+  beepGameStart();
   delay(2500);
 }
 
@@ -921,8 +981,9 @@ void handleSellPropertyScan(int cardIndex) {
     int pIdx = findPlayerByCard(cardIndex);
     if (pIdx >= 0) {
       players[pIdx].saldo += 200;
-      showMessage("Bonus Start", "P" + String(pIdx + 1) + " +200 S:" + String(players[pIdx].saldo), true, 1800);
-      beepOk();
+      showMessage("Bonus Start", "P" + String(pIdx + 1) + " +200 S:" + String(players[pIdx].saldo), false, 0);
+      beepUpgrade();
+      delay(1800);
       goIdle();
       return;
     } else {
